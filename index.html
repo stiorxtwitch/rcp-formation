@@ -2,202 +2,159 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Simulateur RCP Avancé</title>
+<title>Simulateur RCP + DEA 2D</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body {
-    margin:0;
-    font-family: Arial, sans-serif;
     background:#0b1c2d;
     color:white;
+    font-family:Arial, sans-serif;
     text-align:center;
 }
 
-#top {
+#instruction {
     background:#102a44;
     padding:15px;
-    font-size:20px;
+    font-size:18px;
+}
+
+#scene {
+    position:relative;
+    width:300px;
+    margin:20px auto;
 }
 
 #mannequin {
-    position:relative;
-    margin:20px auto;
-    width:300px;
-    height:600px;
-    background:linear-gradient(#ccc,#999);
-    border-radius:30px;
-}
-
-#thorax {
-    position:absolute;
-    top:220px;
-    left:70px;
-    width:160px;
-    height:120px;
-    background:#555;
-    border-radius:20px;
-    transition:transform 0.1s;
-}
-
-#bouche {
-    position:absolute;
-    top:70px;
-    left:110px;
-    width:80px;
-    height:40px;
-    background:#222;
-    border-radius:10px;
+    width:100%;
 }
 
 .zone {
+    position:absolute;
     cursor:pointer;
+}
+
+#epaules { top:90px; left:40px; width:220px; height:50px; }
+#tete { top:20px; left:90px; width:120px; height:60px; }
+#thorax { top:200px; left:80px; width:140px; height:120px; }
+#bouche { top:70px; left:110px; width:80px; height:40px; }
+
+#dea {
+    display:none;
+    margin-top:20px;
+}
+
+.electrode {
+    width:60px;
+    cursor:grab;
+}
+
+#zoneClavicule {
+    position:absolute;
+    top:180px;
+    left:60px;
+    width:80px;
+    height:80px;
+}
+
+#zoneAxillaire {
+    position:absolute;
+    top:260px;
+    left:160px;
+    width:80px;
+    height:80px;
 }
 
 #score {
-    background:#102a44;
-    padding:10px;
-    font-size:16px;
-}
-
-button {
-    padding:10px 20px;
+    margin-top:20px;
     font-size:18px;
-    margin:10px;
-    border-radius:10px;
-    border:none;
-    cursor:pointer;
-}
-
-.good { color:#00ff88 }
-.bad { color:#ff5555 }
-
-@media (max-width: 800px) {
-    body { font-size:22px; }
-    #mannequin { width:90%; height:auto; }
 }
 </style>
 </head>
 
 <body>
 
-<div id="top">🩺 Simulateur RCP – Mode Formation</div>
+<div id="instruction">
+Cliquez sur les épaules et parlez pour vérifier la conscience.
+</div>
 
-<button onclick="start()">▶️ Démarrer la formation</button>
+<div id="scene">
+    <img id="mannequin" src="/mnt/data/0b8a7a17-d766-4540-ab97-b24e940d0179.png">
 
-<div id="mannequin">
+    <div id="epaules" class="zone"></div>
+    <div id="tete" class="zone"></div>
     <div id="thorax" class="zone"></div>
     <div id="bouche" class="zone"></div>
+
+    <div id="zoneClavicule"></div>
+    <div id="zoneAxillaire"></div>
+</div>
+
+<div id="dea">
+    <img src="https://asmsecourisme.com/wp-content/uploads/2017/09/AED-Zoll-AED-3-Semi-Automatic-1.png" width="200"><br>
+    <img src="https://i.imgur.com/QfpuXdZ.png" class="electrode" draggable="true" id="elec1">
+    <img src="https://i.imgur.com/NMdwaYQ.png" class="electrode" draggable="true" id="elec2"><br>
+    <button id="shock">⚡ CHOC</button>
 </div>
 
 <div id="score"></div>
 
 <script>
-/* ===================== VARIABLES ===================== */
-let step = 0;
+let step = 1;
 let compressions = 0;
 let insufflations = 0;
-let goodRhythm = 0;
-let badRhythm = 0;
-let lastCompressionTime = 0;
 
-/* ===================== AUDIO MÉTRONOME ===================== */
-let audioCtx = new AudioContext();
-let metronomeInterval;
+document.getElementById("epaules").onclick = () => {
+    if(step!==1) return;
+    step=2;
+    instruction.innerText="Aucune réponse. Appelez à l’aide.";
+};
 
-function startMetronome() {
-    metronomeInterval = setInterval(() => {
-        let osc = audioCtx.createOscillator();
-        osc.frequency.value = 800;
-        osc.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.05);
-    }, 600); // 100/min
-}
+document.getElementById("tete").onclick = () => {
+    if(step!==2) return;
+    step=3;
+    instruction.innerText="Pas de respiration. Débutez les compressions.";
+};
 
-function stopMetronome() {
-    clearInterval(metronomeInterval);
-}
+document.getElementById("thorax").onclick = () => {
+    if(step!==3) return;
+    compressions++;
+    if(compressions===30){
+        step=4;
+        instruction.innerText="Effectuez 2 insufflations.";
+    }
+};
 
-/* ===================== MICRO ANALYSE ===================== */
-navigator.mediaDevices.getUserMedia({ audio:true }).then(stream => {
-    const mic = audioCtx.createMediaStreamSource(stream);
-    const analyser = audioCtx.createAnalyser();
-    mic.connect(analyser);
-    analyser.fftSize = 256;
-    const data = new Uint8Array(analyser.frequencyBinCount);
+document.getElementById("bouche").onclick = () => {
+    if(step!==4) return;
+    insufflations++;
+    if(insufflations===2){
+        step=5;
+        instruction.innerText="Appelez les secours. Le DEA arrive.";
+        document.getElementById("dea").style.display="block";
+    }
+};
 
-    setInterval(() => {
-        analyser.getByteFrequencyData(data);
-        let volume = data.reduce((a,b)=>a+b)/data.length;
-        window.currentVolume = volume;
-    }, 200);
+document.querySelectorAll(".electrode").forEach(e=>{
+    e.ondragstart = ev => ev.dataTransfer.setData("id",ev.target.id);
 });
 
-/* ===================== DÉMARRAGE ===================== */
-function start() {
-    step = 1;
-    document.getElementById("top").innerText =
-        "Débutez les compressions thoraciques (30).";
-    startMetronome();
-}
+["zoneClavicule","zoneAxillaire"].forEach(id=>{
+    document.getElementById(id).ondragover = e=>e.preventDefault();
+    document.getElementById(id).ondrop = e=>{
+        e.preventDefault();
+        e.target.style.border="2px solid lime";
+    };
+});
 
-/* ===================== COMPRESSIONS ===================== */
-document.getElementById("thorax").onclick = () => {
-    if(step !== 1) return;
-
-    let now = Date.now();
-    let delta = now - lastCompressionTime;
-    lastCompressionTime = now;
-
-    if(delta > 500 && delta < 700) goodRhythm++;
-    else badRhythm++;
-
-    compressions++;
-    document.getElementById("thorax").style.transform = "scaleY(0.85)";
-    setTimeout(()=> {
-        document.getElementById("thorax").style.transform = "scaleY(1)";
-    },100);
-
-    if(compressions === 30) {
-        stopMetronome();
-        step = 2;
-        document.getElementById("top").innerText =
-            "Effectuez 2 insufflations.";
-    }
-};
-
-/* ===================== INSUFFLATIONS ===================== */
-document.getElementById("bouche").onclick = () => {
-    if(step !== 2) return;
-
-    if(window.currentVolume > 20) {
-        insufflations++;
-    }
-
-    if(insufflations === 2) {
-        finish();
-    }
-};
-
-/* ===================== FIN & SCORE ===================== */
-function finish() {
-    step = 3;
-    let score = Math.round(
-        (goodRhythm / (goodRhythm + badRhythm)) * 100
-    );
-
-    document.getElementById("top").innerText = "Simulation terminée";
-
-    document.getElementById("score").innerHTML = `
-        <p class="good">✔ Compressions : ${compressions}</p>
-        <p>✔ Insufflations : ${insufflations}</p>
-        <p>🎵 Rythme correct : ${goodRhythm}</p>
-        <p class="bad">⚠️ Rythme incorrect : ${badRhythm}</p>
-        <h2>Score global : ${score}%</h2>
-        <p>${score > 80 ? "Excellent 👏" : "À améliorer 🔁"}</p>
+document.getElementById("shock").onclick = () => {
+    instruction.innerText="Choc délivré. Reprenez la RCP.";
+    score.innerHTML = `
+    ✔ Compressions : ${compressions}<br>
+    ✔ Insufflations : ${insufflations}<br>
+    Simulation terminée
     `;
-}
+};
 </script>
 
 </body>
