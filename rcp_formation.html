@@ -2,189 +2,202 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Formation RCP Interactive</title>
+<title>Simulateur RCP Avancé</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 body {
+    margin:0;
     font-family: Arial, sans-serif;
-    background: #f2f6fa;
-    text-align: center;
+    background:#0b1c2d;
+    color:white;
+    text-align:center;
 }
 
-#instruction {
-    background: #003366;
-    color: white;
-    padding: 15px;
-    font-size: 18px;
+#top {
+    background:#102a44;
+    padding:15px;
+    font-size:20px;
 }
 
 #mannequin {
-    position: relative;
-    margin: 30px auto;
-    width: 300px;
-    height: 600px;
-    background: #ddd;
-    border-radius: 20px;
+    position:relative;
+    margin:20px auto;
+    width:300px;
+    height:600px;
+    background:linear-gradient(#ccc,#999);
+    border-radius:30px;
+}
+
+#thorax {
+    position:absolute;
+    top:220px;
+    left:70px;
+    width:160px;
+    height:120px;
+    background:#555;
+    border-radius:20px;
+    transition:transform 0.1s;
+}
+
+#bouche {
+    position:absolute;
+    top:70px;
+    left:110px;
+    width:80px;
+    height:40px;
+    background:#222;
+    border-radius:10px;
 }
 
 .zone {
-    position: absolute;
-    border: 2px dashed transparent;
+    cursor:pointer;
 }
 
-.zone:hover {
-    border-color: red;
-    cursor: pointer;
+#score {
+    background:#102a44;
+    padding:10px;
+    font-size:16px;
 }
 
-#epaules { top: 50px; left: 50px; width: 200px; height: 60px; }
-#tete { top: 0; left: 80px; width: 140px; height: 60px; }
-#thorax { top: 200px; left: 70px; width: 160px; height: 120px; }
-#bouche { top: 60px; left: 110px; width: 80px; height: 40px; }
-
-#dea {
-    display: none;
-    margin-top: 20px;
+button {
+    padding:10px 20px;
+    font-size:18px;
+    margin:10px;
+    border-radius:10px;
+    border:none;
+    cursor:pointer;
 }
 
-.electrode {
-    width: 60px;
-    height: 60px;
-    background: yellow;
-    display: inline-block;
-    margin: 10px;
-    cursor: grab;
-}
+.good { color:#00ff88 }
+.bad { color:#ff5555 }
 
-#resultat {
-    font-size: 20px;
-    margin-top: 20px;
+@media (max-width: 800px) {
+    body { font-size:22px; }
+    #mannequin { width:90%; height:auto; }
 }
 </style>
 </head>
 
 <body>
 
-<div id="instruction">Clique sur les épaules et parle pour vérifier la conscience.</div>
+<div id="top">🩺 Simulateur RCP – Mode Formation</div>
+
+<button onclick="start()">▶️ Démarrer la formation</button>
 
 <div id="mannequin">
-    <div id="epaules" class="zone"></div>
-    <div id="tete" class="zone"></div>
     <div id="thorax" class="zone"></div>
     <div id="bouche" class="zone"></div>
 </div>
 
-<div id="dea">
-    <h3>DEA</h3>
-    <button id="power">Allumer le DEA</button><br>
-    <div class="electrode" draggable="true" id="elec1">Électrode 1</div>
-    <div class="electrode" draggable="true" id="elec2">Électrode 2</div><br>
-    <button id="shock">⚡ Bouton de choc</button>
-</div>
-
-<div id="resultat"></div>
+<div id="score"></div>
 
 <script>
-let step = 1;
+/* ===================== VARIABLES ===================== */
+let step = 0;
 let compressions = 0;
 let insufflations = 0;
-let recognition;
+let goodRhythm = 0;
+let badRhythm = 0;
+let lastCompressionTime = 0;
 
-function speakCheck(callback) {
-    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'fr-FR';
-    recognition.start();
+/* ===================== AUDIO MÉTRONOME ===================== */
+let audioCtx = new AudioContext();
+let metronomeInterval;
 
-    recognition.onresult = function(event) {
-        callback(true);
-    };
-
-    recognition.onerror = function() {
-        callback(false);
-    };
+function startMetronome() {
+    metronomeInterval = setInterval(() => {
+        let osc = audioCtx.createOscillator();
+        osc.frequency.value = 800;
+        osc.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+    }, 600); // 100/min
 }
 
-document.getElementById("epaules").onclick = () => {
-    if (step !== 1) return;
-    speakCheck(success => {
-        if (success) {
-            document.getElementById("instruction").innerText =
-            "Aucune réponse. Appellez de l'aide à voix haute.";
-            step = 2;
-        } else {
-            alert("Vous devez parler !");
-        }
-    });
-};
+function stopMetronome() {
+    clearInterval(metronomeInterval);
+}
 
-document.getElementById("mannequin").onclick = () => {
-    if (step === 2) {
-        speakCheck(success => {
-            if (success) {
-                document.getElementById("instruction").innerText =
-                "Effectuez la VEC : cliquez sur la tête.";
-                step = 3;
-            }
-        });
-    }
-};
+/* ===================== MICRO ANALYSE ===================== */
+navigator.mediaDevices.getUserMedia({ audio:true }).then(stream => {
+    const mic = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    mic.connect(analyser);
+    analyser.fftSize = 256;
+    const data = new Uint8Array(analyser.frequencyBinCount);
 
-document.getElementById("tete").onclick = () => {
-    if (step !== 3) return;
-    document.getElementById("instruction").innerText =
-    "Pas de respiration. Débutez les compressions thoraciques.";
-    step = 4;
-};
-
-document.getElementById("thorax").onclick = () => {
-    if (step !== 4) return;
-    compressions++;
-    if (compressions === 30) {
-        document.getElementById("instruction").innerText =
-        "Faites 2 insufflations.";
-        step = 5;
-    }
-};
-
-document.getElementById("bouche").onclick = () => {
-    if (step !== 5) return;
-    insufflations++;
-    if (insufflations === 2) {
-        document.getElementById("instruction").innerText =
-        "Appelez les secours. Le DEA arrive.";
-        step = 6;
-        document.getElementById("dea").style.display = "block";
-    }
-};
-
-document.getElementById("power").onclick = () => {
-    if (step !== 6) return;
-    document.getElementById("instruction").innerText =
-    "Placez les électrodes.";
-    step = 7;
-};
-
-document.getElementById("shock").onclick = () => {
-    if (step !== 8) return;
-    document.getElementById("instruction").innerText =
-    "Choc délivré. Reprenez la RCP.";
-    step = 9;
-    document.getElementById("resultat").innerText =
-    "Simulation terminée ✔️\nCompressions : " + compressions +
-    "\nInsufflations : " + insufflations;
-};
-
-document.querySelectorAll(".electrode").forEach(e => {
-    e.ondragstart = ev => ev.dataTransfer.setData("text", ev.target.id);
+    setInterval(() => {
+        analyser.getByteFrequencyData(data);
+        let volume = data.reduce((a,b)=>a+b)/data.length;
+        window.currentVolume = volume;
+    }, 200);
 });
 
-document.getElementById("thorax").ondragover = ev => ev.preventDefault();
-document.getElementById("thorax").ondrop = ev => {
-    if (step === 7) {
-        step = 8;
-        document.getElementById("instruction").innerText =
-        "Écartez-vous et annoncez-le à voix haute.";
+/* ===================== DÉMARRAGE ===================== */
+function start() {
+    step = 1;
+    document.getElementById("top").innerText =
+        "Débutez les compressions thoraciques (30).";
+    startMetronome();
+}
+
+/* ===================== COMPRESSIONS ===================== */
+document.getElementById("thorax").onclick = () => {
+    if(step !== 1) return;
+
+    let now = Date.now();
+    let delta = now - lastCompressionTime;
+    lastCompressionTime = now;
+
+    if(delta > 500 && delta < 700) goodRhythm++;
+    else badRhythm++;
+
+    compressions++;
+    document.getElementById("thorax").style.transform = "scaleY(0.85)";
+    setTimeout(()=> {
+        document.getElementById("thorax").style.transform = "scaleY(1)";
+    },100);
+
+    if(compressions === 30) {
+        stopMetronome();
+        step = 2;
+        document.getElementById("top").innerText =
+            "Effectuez 2 insufflations.";
     }
 };
+
+/* ===================== INSUFFLATIONS ===================== */
+document.getElementById("bouche").onclick = () => {
+    if(step !== 2) return;
+
+    if(window.currentVolume > 20) {
+        insufflations++;
+    }
+
+    if(insufflations === 2) {
+        finish();
+    }
+};
+
+/* ===================== FIN & SCORE ===================== */
+function finish() {
+    step = 3;
+    let score = Math.round(
+        (goodRhythm / (goodRhythm + badRhythm)) * 100
+    );
+
+    document.getElementById("top").innerText = "Simulation terminée";
+
+    document.getElementById("score").innerHTML = `
+        <p class="good">✔ Compressions : ${compressions}</p>
+        <p>✔ Insufflations : ${insufflations}</p>
+        <p>🎵 Rythme correct : ${goodRhythm}</p>
+        <p class="bad">⚠️ Rythme incorrect : ${badRhythm}</p>
+        <h2>Score global : ${score}%</h2>
+        <p>${score > 80 ? "Excellent 👏" : "À améliorer 🔁"}</p>
+    `;
+}
 </script>
 
 </body>
