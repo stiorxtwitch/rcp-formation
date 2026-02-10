@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Formation RCP Interactive</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f6fa;
+    text-align: center;
+}
+
+#instruction {
+    background: #003366;
+    color: white;
+    padding: 15px;
+    font-size: 18px;
+}
+
+#mannequin {
+    position: relative;
+    margin: 30px auto;
+    width: 300px;
+    height: 600px;
+    background: #ddd;
+    border-radius: 20px;
+}
+
+.zone {
+    position: absolute;
+    border: 2px dashed transparent;
+}
+
+.zone:hover {
+    border-color: red;
+    cursor: pointer;
+}
+
+#epaules { top: 50px; left: 50px; width: 200px; height: 60px; }
+#tete { top: 0; left: 80px; width: 140px; height: 60px; }
+#thorax { top: 200px; left: 70px; width: 160px; height: 120px; }
+#bouche { top: 60px; left: 110px; width: 80px; height: 40px; }
+
+#dea {
+    display: none;
+    margin-top: 20px;
+}
+
+.electrode {
+    width: 60px;
+    height: 60px;
+    background: yellow;
+    display: inline-block;
+    margin: 10px;
+    cursor: grab;
+}
+
+#resultat {
+    font-size: 20px;
+    margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="instruction">Clique sur les épaules et parle pour vérifier la conscience.</div>
+
+<div id="mannequin">
+    <div id="epaules" class="zone"></div>
+    <div id="tete" class="zone"></div>
+    <div id="thorax" class="zone"></div>
+    <div id="bouche" class="zone"></div>
+</div>
+
+<div id="dea">
+    <h3>DEA</h3>
+    <button id="power">Allumer le DEA</button><br>
+    <div class="electrode" draggable="true" id="elec1">Électrode 1</div>
+    <div class="electrode" draggable="true" id="elec2">Électrode 2</div><br>
+    <button id="shock">⚡ Bouton de choc</button>
+</div>
+
+<div id="resultat"></div>
+
+<script>
+let step = 1;
+let compressions = 0;
+let insufflations = 0;
+let recognition;
+
+function speakCheck(callback) {
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'fr-FR';
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        callback(true);
+    };
+
+    recognition.onerror = function() {
+        callback(false);
+    };
+}
+
+document.getElementById("epaules").onclick = () => {
+    if (step !== 1) return;
+    speakCheck(success => {
+        if (success) {
+            document.getElementById("instruction").innerText =
+            "Aucune réponse. Appellez de l'aide à voix haute.";
+            step = 2;
+        } else {
+            alert("Vous devez parler !");
+        }
+    });
+};
+
+document.getElementById("mannequin").onclick = () => {
+    if (step === 2) {
+        speakCheck(success => {
+            if (success) {
+                document.getElementById("instruction").innerText =
+                "Effectuez la VEC : cliquez sur la tête.";
+                step = 3;
+            }
+        });
+    }
+};
+
+document.getElementById("tete").onclick = () => {
+    if (step !== 3) return;
+    document.getElementById("instruction").innerText =
+    "Pas de respiration. Débutez les compressions thoraciques.";
+    step = 4;
+};
+
+document.getElementById("thorax").onclick = () => {
+    if (step !== 4) return;
+    compressions++;
+    if (compressions === 30) {
+        document.getElementById("instruction").innerText =
+        "Faites 2 insufflations.";
+        step = 5;
+    }
+};
+
+document.getElementById("bouche").onclick = () => {
+    if (step !== 5) return;
+    insufflations++;
+    if (insufflations === 2) {
+        document.getElementById("instruction").innerText =
+        "Appelez les secours. Le DEA arrive.";
+        step = 6;
+        document.getElementById("dea").style.display = "block";
+    }
+};
+
+document.getElementById("power").onclick = () => {
+    if (step !== 6) return;
+    document.getElementById("instruction").innerText =
+    "Placez les électrodes.";
+    step = 7;
+};
+
+document.getElementById("shock").onclick = () => {
+    if (step !== 8) return;
+    document.getElementById("instruction").innerText =
+    "Choc délivré. Reprenez la RCP.";
+    step = 9;
+    document.getElementById("resultat").innerText =
+    "Simulation terminée ✔️\nCompressions : " + compressions +
+    "\nInsufflations : " + insufflations;
+};
+
+document.querySelectorAll(".electrode").forEach(e => {
+    e.ondragstart = ev => ev.dataTransfer.setData("text", ev.target.id);
+});
+
+document.getElementById("thorax").ondragover = ev => ev.preventDefault();
+document.getElementById("thorax").ondrop = ev => {
+    if (step === 7) {
+        step = 8;
+        document.getElementById("instruction").innerText =
+        "Écartez-vous et annoncez-le à voix haute.";
+    }
+};
+</script>
+
+</body>
+</html>
