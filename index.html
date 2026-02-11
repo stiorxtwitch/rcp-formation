@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Formation aux Premiers Secours - Simulateur RCP + DEA</title>
+    <title>Formation Premiers Secours - Simulateur RCP + DEA</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body {
@@ -18,12 +18,13 @@
             padding: 15px;
             font-size: 18px;
             border-radius: 8px;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto 20px;
+            min-height: 60px;
         }
         #scene {
             position: relative;
-            width: 300px;
+            width: 320px;
             margin: 20px auto;
         }
         #mannequin {
@@ -33,137 +34,134 @@
         .zone {
             position: absolute;
             cursor: pointer;
-            border: 1px solid transparent; /* Invisible par défaut */
+            border: 2px solid transparent;
+            border-radius: 6px;
+            transition: all 0.2s;
         }
         .zone.active {
-            border: 1px dashed yellow; /* Visible quand active */
+            border: 2px dashed #ffff00;
+            background: rgba(255,255,0,0.15);
         }
-        #epaules { top: 90px; left: 40px; width: 220px; height: 50px; }
-        #front { top: 20px; left: 90px; width: 120px; height: 30px; } /* Front pour basculer la tête */
-        #menton { top: 80px; left: 140px; width: 20px; height: 20px; } /* Menton pour VEC */
-        #thorax { top: 200px; left: 80px; width: 140px; height: 120px; }
-        #bouche { top: 70px; left: 110px; width: 80px; height: 40px; }
+        .zone.clicked {
+            border: 2px solid lime;
+            background: rgba(0,255,0,0.2);
+        }
+
+        #epaules   { top: 85px;  left: 35px;  width: 250px; height: 60px; }
+        #front     { top: 35px;  left: 100px; width: 120px; height: 35px; }
+        #menton    { top: 95px;  left: 130px; width: 60px;  height: 35px; }
+        #thorax    { top: 195px; left: 75px;  width: 170px; height: 130px; }
+        #bouche    { top: 75px;  left: 110px; width: 100px; height: 45px; }
+
         #dea {
             display: none;
             margin: 30px auto;
-            max-width: 400px;
-        }
-        #dea-power {
-            display: none;
-            margin: 10px;
-            padding: 10px;
-            background: #28a745;
-            color: white;
-            border: none;
-            cursor: pointer;
+            max-width: 420px;
         }
         .electrode {
-            width: 60px;
+            width: 70px;
             cursor: grab;
-            margin: 10px;
-            display: none; /* Caché jusqu'à déballage */
+            margin: 12px;
+            display: none;
         }
         .dropzone {
             position: absolute;
             border: 2px dashed #666;
-            border-radius: 8px;
-            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
             transition: all 0.3s;
-            display: none; /* Caché au début */
+            display: none;
         }
         .dropzone.valid {
-            border: 3px solid lime;
-            background: rgba(0,255,0,0.15);
+            border: 3px solid #00ff88;
+            background: rgba(0,255,136,0.2);
         }
-        #zoneClavicule {
-            top: 180px;
-            left: 60px;
-            width: 80px;
-            height: 80px;
-        }
-        #zoneAxillaire {
-            top: 260px;
-            left: 160px;
-            width: 80px;
-            height: 80px;
-        }
+        #zoneClavicule   { top: 175px; left: 55px;  width: 90px; height: 90px; }
+        #zoneAxillaire   { top: 255px; left: 155px; width: 90px; height: 90px; }
+
         #shock {
-            padding: 12px 30px;
-            font-size: 18px;
+            padding: 14px 40px;
+            font-size: 20px;
             background: #c0392b;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
-            margin: 15px 0;
-            display: none; /* Caché au début */
+            margin: 20px 0;
+            display: none;
         }
         #shock:disabled {
             background: #555;
             cursor: not-allowed;
         }
+
         #phone {
             display: none;
-            margin: 20px auto;
+            margin: 25px auto;
             padding: 20px;
-            background: #343a40;
-            border-radius: 8px;
-            max-width: 400px;
+            background: #1e2a38;
+            border-radius: 10px;
+            max-width: 500px;
         }
-        #mic-btn {
-            padding: 10px 20px;
+
+        #mic-btn, #mic-btn-phone {
+            padding: 10px 24px;
             background: #007bff;
             color: white;
             border: none;
+            border-radius: 6px;
             cursor: pointer;
-            margin: 10px;
+            margin: 12px 0;
         }
-        #mic-status {
+
+        #mic-status, #mic-status-phone {
             font-size: 16px;
-            color: #ffc107;
+            color: #ffd700;
+            margin-top: 8px;
         }
+
         #score {
-            margin-top: 30px;
-            font-size: 20px;
+            margin-top: 40px;
+            font-size: 22px;
             line-height: 1.6;
-            display: none; /* Affiché à la fin */
+            display: none;
         }
     </style>
 </head>
 <body>
 
 <div id="instruction">
-    Étape 1 : Évaluez la conscience. Cliquez sur les épaules et appelez la victime (utilisez le micro pour dire "Monsieur/Madame, ça va ?").
+    Étape 1 : Évaluez la conscience<br>Cliquez sur les épaules puis parlez au micro ("Monsieur/Madame, ça va ?").
 </div>
 
 <div id="scene">
     <img id="mannequin" src="https://i.imgur.com/xIj4UxP.png" alt="Mannequin RCP">
-    
-    <div id="epaules" class="zone active"></div>
-    <div id="front" class="zone"></div>
-    <div id="menton" class="zone"></div>
-    <div id="thorax" class="zone"></div>
-    <div id="bouche" class="zone"></div>
-    
-    <div id="zoneClavicule" class="dropzone"></div>
-    <div id="zoneAxillaire" class="dropzone"></div>
+
+    <div id="epaules"   class="zone active"></div>
+    <div id="front"     class="zone"></div>
+    <div id="menton"    class="zone"></div>
+    <div id="thorax"    class="zone"></div>
+    <div id="bouche"    class="zone"></div>
+
+    <div id="zoneClavicule"   class="dropzone"></div>
+    <div id="zoneAxillaire"   class="dropzone"></div>
 </div>
 
 <div id="phone">
-    <p>Appel aux secours : Dites au micro "Bonjour, une personne est inconsciente, adresse : [votre adresse], envoyez de l'aide."</p>
+    <p>Appelez les secours :<br>Dites au micro : "Allô, une personne est inconsciente, adresse : [votre adresse], vite !"</p>
     <button id="mic-btn-phone">Parler au micro</button>
     <div id="mic-status-phone"></div>
 </div>
 
 <div id="dea">
-    <img src="https://i.imgur.com/vVsh9qV.png" width="200" alt="Défibrillateur"><br>
-    <button id="dea-power">Allumer le DEA</button>
+    <img src="https://i.imgur.com/vVsh9qV.png" width="220" alt="Défibrillateur"><br>
+    <button id="dea-power">Allumer le DEA</button><br>
     <img src="https://i.imgur.com/QfpuXdZ.png" class="electrode" draggable="true" id="elec1">
     <img src="https://i.imgur.com/NMdwaYQ.png" class="electrode" draggable="true" id="elec2"><br>
     <button id="shock" disabled>⚡ CHOC</button>
 </div>
 
-<div id="mic-controls">
+<div style="margin: 20px;">
     <button id="mic-btn">Parler au micro</button>
     <div id="mic-status"></div>
 </div>
@@ -178,215 +176,181 @@
     let compressionStartTime = null;
     let compressionCount = 0;
     let rhythmOk = false;
-    let speechRecognition;
-    let lastSpoken = '';
+
+    let vecClicked = { front: false, menton: false };
 
     const instruction = document.getElementById("instruction");
     const scoreDiv = document.getElementById("score");
     const deaDiv = document.getElementById("dea");
     const phoneDiv = document.getElementById("phone");
     const shockBtn = document.getElementById("shock");
-    const deaPower = document.getElementById("dea-power");
-    const micBtn = document.getElementById("mic-btn");
-    const micStatus = document.getElementById("mic-status");
-    const micBtnPhone = document.getElementById("mic-btn-phone");
-    const micStatusPhone = document.getElementById("mic-status-phone");
 
-    // Initialiser Speech Recognition (si supporté)
-    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-        speechRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        speechRecognition.lang = 'fr-FR';
-        speechRecognition.interimResults = false;
-        speechRecognition.maxAlternatives = 1;
-
-        speechRecognition.onresult = (event) => {
-            lastSpoken = event.results[0][0].transcript.toLowerCase();
-            micStatus.innerText = `Reconnu : ${lastSpoken}`;
-            micStatusPhone.innerText = `Reconnu : ${lastSpoken}`;
-            handleSpeech();
-        };
-
-        speechRecognition.onerror = (event) => {
-            micStatus.innerText = 'Erreur de reconnaissance vocale.';
-            micStatusPhone.innerText = 'Erreur de reconnaissance vocale.';
-        };
-    } else {
-        alert('Votre navigateur ne supporte pas la reconnaissance vocale.');
-    }
-
-    micBtn.onclick = () => {
-        if (speechRecognition) speechRecognition.start();
-        micStatus.innerText = 'Écoute en cours...';
-    };
-
-    micBtnPhone.onclick = () => {
-        if (speechRecognition) speechRecognition.start();
-        micStatusPhone.innerText = 'Écoute en cours...';
-    };
-
-    function handleSpeech() {
-        if (step === 1 && lastSpoken.includes('ça va')) {
-            step = 2;
-            instruction.innerText = "Aucune réponse. Étape 2 : Appelez à l'aide (dites 'Au secours !' au micro).";
-            document.getElementById("epaules").classList.remove("active");
-        } else if (step === 2 && lastSpoken.includes('secours')) {
-            step = 3;
-            instruction.innerText = "Étape 3 : Effectuez le VEC. Cliquez sur le front et le menton pour basculer la tête et évaluer la respiration.";
-            document.getElementById("front").classList.add("active");
-            document.getElementById("menton").classList.add("active");
-        } else if (step === 5 && phoneDiv.style.display === 'block' && lastSpoken.includes('inconscient') && lastSpoken.includes('adresse')) {
-            phoneDiv.style.display = 'none';
-            step = 6;
-            instruction.innerText = "Secours appelés. Étape 6 : Le DEA arrive. Allumez le DEA.";
-            deaDiv.style.display = 'block';
-            deaPower.style.display = 'block';
-        } else if (step === 8 && lastSpoken.includes('écartez')) {
-            instruction.innerText = "Personnes écartées. Le DEA analyse... Ordre de choquer. Dites 'Choc' et appuyez sur le bouton.";
-        } else if (step === 9 && lastSpoken.includes('choc')) {
-            // Permet d'appuyer sur le bouton
+    // Simulation simple de reconnaissance vocale (car réelle pas toujours fiable dans tous les navigateurs)
+    function simulateSpeech(stepExpected, keywords, successMessage) {
+        const spoken = prompt("Dites quelque chose au micro (simulation) :").toLowerCase();
+        if (keywords.some(k => spoken.includes(k))) {
+            alert("Reconnu : OK");
+            return true;
         } else {
-            micStatus.innerText = 'Échec : Phrase incorrecte. Réessayez.';
-            micStatusPhone.innerText = 'Échec : Phrase incorrecte. Réessayez.';
+            alert("Non reconnu. Essayez : " + successMessage);
+            return false;
         }
     }
 
-    function updateScore() {
-        scoreDiv.innerHTML = `
-            <strong>Compressions :</strong> ${compressions} (Rythme OK : ${rhythmOk ? 'Oui' : 'Non'})<br>
-            <strong>Insufflations :</strong> ${insufflations}<br>
-            <strong>Électrodes placées :</strong> ${electrodesPlaced}/2<br>
-            <strong>Simulation terminée avec succès !</strong>
-        `;
-    }
-
-    // Étape 1 : Épaules (clic + micro déjà géré)
+    // Étape 1 : Conscience
     document.getElementById("epaules").onclick = () => {
         if (step !== 1) return;
-        // Attend le micro pour passer à 2
-    };
-
-    // Étape 3 : VEC (front + menton)
-    let vecClicked = { front: false, menton: false };
-    document.getElementById("front").onclick = () => {
-        if (step !== 3) return;
-        vecClicked.front = true;
-        checkVec();
-    };
-    document.getElementById("menton").onclick = () => {
-        if (step !== 3) return;
-        vecClicked.menton = true;
-        checkVec();
-    };
-    function checkVec() {
-        if (vecClicked.front && vecClicked.menton) {
-            step = 4;
-            instruction.innerText = "Pas de respiration. Étape 4 : Débutez 30 compressions (cliquez sur le thorax, rythme ~100-120/min).";
-            document.getElementById("front").classList.remove("active");
-            document.getElementById("menton").classList.remove("active");
-            document.getElementById("thorax").classList.add("active");
-            compressionStartTime = Date.now();
+        if (simulateSpeech(1, ["ça va", "ca va", "vous allez"], "Monsieur/Madame, ça va ?")) {
+            step = 2;
+            instruction.innerText = "Aucune réponse. Étape 2 : Appelez à l'aide (parlez au micro : 'Au secours !').";
+            document.getElementById("epaules").classList.remove("active");
         }
-    }
+    };
 
-    // Étape 4 : Compressions + Insufflations
-    document.getElementById("thorax").onclick = () => {
-        if (step !== 4 && step !== 10) return;
-        compressionCount++;
-        if (compressionCount === 1) compressionStartTime = Date.now();
-        if (compressionCount >= 30) {
-            const timeTaken = (Date.now() - compressionStartTime) / 1000; // en secondes
-            const rate = 30 / (timeTaken / 60); // compressions par minute
-            rhythmOk = rate >= 100 && rate <= 120;
-            compressionCount = 0;
-            if (step === 4) {
-                step = 4.5;
-                instruction.innerText = "30 compressions effectuées. Effectuez 2 insufflations (cliquez sur la bouche).";
-                document.getElementById("thorax").classList.remove("active");
-                document.getElementById("bouche").classList.add("active");
-            } else if (step === 10) {
-                // Fin après reprise RCP
-                step = 11;
-                instruction.innerText = "Simulation terminée. Voyez les résultats.";
-                scoreDiv.style.display = 'block';
-                updateScore();
+    document.getElementById("mic-btn").onclick = () => {
+        if (step === 2) {
+            if (simulateSpeech(2, ["secours", "aide"], "Au secours !")) {
+                step = 3;
+                instruction.innerText = "Étape 3 : VEC - Cliquez d'abord sur le FRONT, puis sur le MENTON.";
+                document.getElementById("front").classList.add("active");
+                document.getElementById("menton").classList.add("active");
             }
         }
     };
 
-    document.getElementById("bouche").onclick = () => {
-        if (step !== 4.5) return;
-        insufflations++;
-        if (insufflations >= 2) {
-            step = 5;
-            instruction.innerText = "Étape 5 : Appelez les secours.";
-            document.getElementById("bouche").classList.remove("active");
-            phoneDiv.style.display = 'block';
+    // Étape 3 : VEC
+    document.getElementById("front").onclick = () => {
+        if (step !== 3) return;
+        vecClicked.front = true;
+        document.getElementById("front").classList.add("clicked");
+        checkVEC();
+    };
+
+    document.getElementById("menton").onclick = () => {
+        if (step !== 3) return;
+        vecClicked.menton = true;
+        document.getElementById("menton").classList.add("clicked");
+        checkVEC();
+    };
+
+    function checkVEC() {
+        if (vecClicked.front && vecClicked.menton) {
+            step = 4;
+            instruction.innerText = "Pas de respiration. Étape 4 : 30 compressions (cliquez rapidement sur le thorax).";
+            document.getElementById("front").classList.remove("active", "clicked");
+            document.getElementById("menton").classList.remove("active", "clicked");
+            document.getElementById("thorax").classList.add("active");
+            compressionStartTime = Date.now();
+            compressionCount = 0;
+        }
+    }
+
+    // Compressions
+    document.getElementById("thorax").onclick = () => {
+        if (![4, 10].includes(step)) return;
+
+        compressionCount++;
+        if (compressionCount === 1) compressionStartTime = Date.now();
+
+        if (compressionCount >= 30) {
+            const timeTaken = (Date.now() - compressionStartTime) / 1000;
+            const rate = 30 / (timeTaken / 60);
+            rhythmOk = rate >= 100 && rate <= 130; // tolérance un peu plus large
+
+            compressionCount = 0;
+
+            if (step === 4) {
+                step = 5;
+                instruction.innerText = "30 compressions terminées. Faites 2 insufflations (cliquez sur la bouche).";
+                document.getElementById("thorax").classList.remove("active");
+                document.getElementById("bouche").classList.add("active");
+            } else if (step === 10) {
+                step = 11;
+                instruction.innerText = "Simulation terminée ! Résultats :";
+                scoreDiv.style.display = "block";
+                scoreDiv.innerHTML = `
+                    <strong>Compressions :</strong> ${compressions} (rythme ${rhythmOk ? 'correct' : 'trop lent/rapide'})<br>
+                    <strong>Insufflations :</strong> ${insufflations}<br>
+                    <strong>Électrodes placées :</strong> ${electrodesPlaced}/2<br><br>
+                    <strong style="color:#00ff88">Bravo ! Vous avez terminé la simulation.</strong>
+                `;
+            }
         }
     };
 
-    // Étape 6 : Allumer DEA et déballer électrodes
-    deaPower.onclick = () => {
-        if (step !== 6) return;
-        deaPower.style.display = 'none';
-        document.querySelectorAll(".electrode").forEach(el => el.style.display = 'inline');
-        document.querySelectorAll(".dropzone").forEach(z => {
-            z.style.display = 'block';
-            z.style.border = "2px dashed #00ffcc";
-        });
-        step = 7;
-        instruction.innerText = "DEA allumé. Étape 7 : Placez les électrodes (glissez-les sur les zones).";
+    // Insufflations
+    document.getElementById("bouche").onclick = () => {
+        if (step !== 5) return;
+        insufflations++;
+        if (insufflations >= 2) {
+            step = 6;
+            instruction.innerText = "2 insufflations réalisées. Étape 6 : Appelez les secours.";
+            document.getElementById("bouche").classList.remove("active");
+            phoneDiv.style.display = "block";
+        }
     };
 
-    // Drag & Drop électrodes
+    // Appel secours (simulé)
+    document.getElementById("mic-btn-phone").onclick = () => {
+        if (step !== 6) return;
+        if (simulateSpeech(6, ["inconscient", "adresse", "secours"], "une personne est inconsciente, adresse...")) {
+            phoneDiv.style.display = "none";
+            step = 7;
+            instruction.innerText = "Secours appelés. Le DEA arrive. Allumez le DEA.";
+            deaDiv.style.display = "block";
+            document.getElementById("dea-power").style.display = "inline-block";
+        }
+    };
+
+    // Suite du code DEA (inchangé pour l'instant, mais zones mieux placées)
+    document.getElementById("dea-power").onclick = () => {
+        if (step !== 7) return;
+        document.getElementById("dea-power").style.display = "none";
+        document.querySelectorAll(".electrode").forEach(el => el.style.display = "inline");
+        document.querySelectorAll(".dropzone").forEach(z => {
+            z.style.display = "block";
+            z.style.border = "2px dashed #00ccff";
+        });
+        step = 8;
+        instruction.innerText = "DEA allumé. Placez les deux électrodes sur les zones indiquées.";
+    };
+
+    // Drag & drop électrodes (simplifié)
     document.querySelectorAll(".electrode").forEach(el => {
-        el.ondragstart = ev => {
-            ev.dataTransfer.setData("text/plain", el.id);
-        };
+        el.ondragstart = ev => ev.dataTransfer.setData("text", el.id);
     });
 
     document.querySelectorAll(".dropzone").forEach(zone => {
-        zone.ondragover = e => {
-            e.preventDefault();
-            zone.style.background = "rgba(0,255,200,0.3)";
-        };
-
-        zone.ondragleave = () => {
-            zone.style.background = "rgba(255,255,255,0.1)";
-        };
-
+        zone.ondragover = e => { e.preventDefault(); zone.style.background = "rgba(0,200,255,0.3)"; };
+        zone.ondragleave = () => zone.style.background = "rgba(255,255,255,0.08)";
         zone.ondrop = e => {
             e.preventDefault();
-            const id = e.dataTransfer.getData("text/plain");
-            const electrode = document.getElementById(id);
-            
-            if (electrode) {
+            const id = e.dataTransfer.getData("text");
+            if (document.getElementById(id)) {
                 zone.classList.add("valid");
-                electrode.style.opacity = "0.6";
-                electrode.draggable = false;
+                document.getElementById(id).style.opacity = "0.7";
                 electrodesPlaced++;
                 if (electrodesPlaced === 2) {
-                    step = 8;
-                    instruction.innerText = "Électrodes placées. Étape 8 : Écoutez le DEA et dites 'Écartez-vous !' au micro.";
-                    shockBtn.style.display = 'block';
+                    step = 9;
+                    instruction.innerText = "Électrodes placées. Dites 'Écartez-vous' puis appuyez sur CHOC.";
+                    shockBtn.style.display = "block";
+                    shockBtn.disabled = false;
                 }
             }
         };
     });
 
-    // Étape 9 : Choc (micro + bouton)
     shockBtn.onclick = () => {
-        if (step !== 9 || electrodesPlaced !== 2) return;
+        if (step !== 9) return;
         step = 10;
-        instruction.innerText = "CHOC délivré ! Étape 9 : Reprenez la RCP (30 compressions puis 2 insufflations).";
+        instruction.innerText = "CHOC délivré ! Reprenez la RCP (30 compressions puis 2 insufflations).";
         shockBtn.disabled = true;
         shockBtn.innerText = "Choc délivré";
         document.getElementById("thorax").classList.add("active");
-        document.getElementById("bouche").classList.add("active");
-        insufflations = 0; // Reset pour reprise
         compressionStartTime = null;
+        compressionCount = 0;
+        insufflations = 0;
     };
-
-    // Pour passer à 9 après 'écartez-vous' (géré dans handleSpeech)
 
 </script>
 </body>
